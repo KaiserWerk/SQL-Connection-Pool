@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type (
@@ -69,6 +71,7 @@ func (pool *SqlPool) Get() (*SqlConn, error) {
 		}
 
 		pool.connections = append(pool.connections, newConn)
+		return newConn, nil
 	}
 
 	return nil, fmt.Errorf("no free connection and limit reached")

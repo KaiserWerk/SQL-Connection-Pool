@@ -58,7 +58,7 @@ func (pool *SqlPool) Get() (*SqlConn, error) {
 	// check first if any connections are available
 	for _, v := range pool.connections {
 		if !v.inUse {
-			v.inUse = true
+			v.inUse = true // pool.connections[i] ?
 			return v, nil
 		}
 	}
@@ -75,6 +75,10 @@ func (pool *SqlPool) Get() (*SqlConn, error) {
 	}
 
 	return nil, fmt.Errorf("no free connection and limit reached")
+}
+
+func (pool *SqlPool) GetMaxConnections() uint16 {
+	return pool.maxConnections
 }
 
 func (pool *SqlPool) Return(conn *SqlConn) {

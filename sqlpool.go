@@ -83,7 +83,11 @@ func (pool *SqlPool) CloseAll() {
 	}
 }
 
-func (pool *SqlPool) GetMaxConnections() uint16 {
+func (pool *SqlPool) GetConnectionCount() int {
+	return len(pool.connections)
+}
+
+func (pool *SqlPool) GetMaxConnectionCount() uint16 {
 	return pool.maxConnections
 }
 

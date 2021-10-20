@@ -71,6 +71,7 @@ func (pool *SqlPool) Get() (*SqlConn, error) {
 		}
 
 		pool.connections = append(pool.connections, newConn)
+		newConn.inUse = true
 		return newConn, nil
 	}
 

@@ -38,7 +38,11 @@ func getNextId() uint32 {
 /*
 In the background, ping all connections every 1 minute or so
 If a connection doesnt respond to a ping, close it and remove it
-and create a new connection instead
+*/
+
+/*
+add "lastUse" field to SqlConn and if last use is too far in the past,
+close the connection and remove it
 */
 
 func New(driver string, dsn string) *SqlPool {
@@ -92,8 +96,15 @@ func (pool *SqlPool) GetMaxConnectionCount() uint16 {
 	return pool.maxConnections
 }
 
-func (pool *SqlPool) Return(conn *SqlConn) {
-	// TODO: implement
+func (pool *SqlPool) Return(conn *SqlConn) error {
+	for _, v := range pool.connections {
+		if conn.id == v.id {
+			v.inUse = false
+			return nil
+		}
+	}
+
+	return fmt.Errorf("this connection is not part of the connection pool")
 }
 
 func (pool *SqlPool) Close(conn *SqlConn) error {

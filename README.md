@@ -15,6 +15,7 @@ import as e.g. ``sqlpool "github.com/KaiserWerk/SQL-Connection-Pool"``
 Create a new pool using default values, just supply the required driver and a DSN: 
 ```golang
 pool := sqlpool.New("mysql", "root:password@tcp(127.0.0.1:3306)/dbname", nil)
+defer pool.Close()
 ```
 
 You can supply a ``*PoolConfig`` as third parameter which allows you to alter the
@@ -25,7 +26,10 @@ pool := sqlpool.New("mysql", "root:password@tcp(127.0.0.1:3306)/dbname", &sqlpoo
     MaxConn: 10,
     MonitorInterval: 2 * time.Minute,
 })
+defer pool.Close()
 ```
+
+``pool.Close()`` closes all existing connections to be closed.
 
 Get a connection (this either returns an unused existing one or creates a new connection if
 the maximum is not reached yet):
@@ -46,19 +50,7 @@ err := pool.Return(conn)
 
 ## Niche methods
 
-There are a few method which might prove to be helpful, but are generally not required.
-
-You can close a connection manually, if you chose to do so, though it is not recommended since
-this will be handled automatically:
-
-```golang
-err := pool.Close(conn)
-```
-
-You can as well elect to close all existing connections (not just those in use):
-```golang
-pool.CloseAll()
-```
+There are a few method which might prove to be helpful.
 
 Return the current total connection count:
 ```golang

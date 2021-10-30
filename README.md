@@ -28,7 +28,7 @@ pool := sqlpool.New("mysql", "root:password@tcp(127.0.0.1:3306)/dbname", &sqlpoo
 ```
 
 Get a connection (this either returns an unused existing one or creates a new connection if
-maximum is not reached yet):
+the maximum is not reached yet):
 ```golang
 conn, err := pool.Get()
 ```

@@ -125,8 +125,10 @@ func (pool *SqlPool) Get() (*SqlConn, error) {
 }
 
 func (pool *SqlPool) CloseAll() {
+	pool.mut.Lock()
+	defer pool.mut.Unlock()
 	for _, v := range pool.connections {
-		v.DB.Close()
+		_ = v.DB.Close()
 	}
 }
 

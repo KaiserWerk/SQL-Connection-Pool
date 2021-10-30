@@ -23,7 +23,7 @@ maximum connection limit and the connection check interval, e.g.
 ```golang
 pool := sqlpool.New("mysql", "root:password@tcp(127.0.0.1:3306)/dbname", &sqlpool.PoolConfig{
     MaxConn: 10,
-    MonitorInterval 2 * time.Minute,
+    MonitorInterval: 2 * time.Minute,
 })
 ```
 

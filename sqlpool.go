@@ -124,11 +124,12 @@ func (pool *SqlPool) Get() (*SqlConn, error) {
 	return nil, fmt.Errorf("no free connection and limit reached")
 }
 
-func (pool *SqlPool) CloseAll() {
+func (pool *SqlPool) Close() {
 	pool.mut.Lock()
 	defer pool.mut.Unlock()
-	for _, v := range pool.connections {
+	for k, v := range pool.connections {
 		_ = v.DB.Close()
+		pool.connections[k] = nil
 	}
 }
 
@@ -149,10 +150,6 @@ func (pool *SqlPool) Return(conn *SqlConn) error {
 	}
 
 	return fmt.Errorf("this connection is not part of the connection pool")
-}
-
-func (pool *SqlPool) Close(conn *SqlConn) error {
-	return conn.DB.Close()
 }
 
 func (pool *SqlPool) createConnection() (*SqlConn, error) {

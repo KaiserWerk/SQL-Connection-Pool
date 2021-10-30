@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -13,46 +14,85 @@ import (
 
 type (
 	SqlPool struct {
-		maxConnections uint16
-		mut            sync.Mutex
-		connections    []*SqlConn
-		driver         string
-		dsn            string
+		maxConnections  uint16
+		mut             sync.Mutex
+		connections     map[uint32]*SqlConn
+		driver          string
+		dsn             string
+		monitorInterval time.Duration
 	}
 	SqlConn struct {
-		id    uint32
-		inUse bool
-		DB    *sql.DB
+		id      uint32
+		inUse   bool
+		lastUse time.Time
+		DB      *sql.DB
 	}
-	PoolConfig struct{}
+	PoolConfig struct {
+		MaxConn         uint16
+		MonitorInterval time.Duration
+	}
+)
+
+const (
+	defaultMaxConnections  = 3
+	defaultMonitorInterval = time.Minute
+	defaultIdleTime = 5 * time.Minute
 )
 
 var (
 	idCounter uint32
 )
 
-func getNextId() uint32 {
-	return atomic.AddUint32(&idCounter, 1)
+func New(driver string, dsn string, config *PoolConfig) *SqlPool {
+	p := SqlPool{
+		maxConnections:  defaultMaxConnections,
+		connections:     make(map[uint32]*SqlConn),
+		driver:          driver,
+		dsn:             dsn,
+		monitorInterval: defaultMonitorInterval,
+	}
+	if config != nil {
+		if config.MaxConn > 0 {
+			p.maxConnections = config.MaxConn
+		}
+		if config.MonitorInterval != 0 {
+			p.monitorInterval = config.MonitorInterval
+		}
+	}
+
+	go func(pool *SqlPool) {
+		for {
+			pool.monitor()
+			time.Sleep(pool.monitorInterval)
+		}
+	}(&p)
+
+	return &p
 }
 
-/*
-In the background, ping all connections every 1 minute or so
-If a connection doesnt respond to a ping, close it and remove it
-*/
+func (pool *SqlPool) monitor() {
+	pool.mut.Lock()
+	defer pool.mut.Unlock()
 
-/*
-add "lastUse" field to SqlConn and if last use is too far in the past,
-close the connection and remove it
-*/
+	wg := new(sync.WaitGroup)
+	for id, conn := range pool.connections {
+		go func(wg *sync.WaitGroup, id uint32, connection *SqlConn) {
+			if connection.lastUse.Sub(time.Now()) > defaultIdleTime {
+				_ = connection.DB.Close()
+				delete(pool.connections, id)
+				return
+			}
 
-func New(driver string, dsn string) *SqlPool {
-	p := SqlPool{
-		maxConnections: 3,
-		connections:    make([]*SqlConn, 0),
-		driver:         driver,
-		dsn:            dsn,
+			if err := connection.DB.Ping(); err != nil {
+				_ = connection.DB.Close()
+				delete(pool.connections, id)
+				return
+			}
+
+		}(wg, id, conn)
 	}
-	return &p
+
+	wg.Wait()
 }
 
 func (pool *SqlPool) Get() (*SqlConn, error) {
@@ -74,8 +114,10 @@ func (pool *SqlPool) Get() (*SqlConn, error) {
 			return nil, fmt.Errorf("could not create new connection: %s", err.Error())
 		}
 
-		pool.connections = append(pool.connections, newConn)
 		newConn.inUse = true
+		newConn.lastUse = time.Now()
+		pool.connections[newConn.id] = newConn
+
 		return newConn, nil
 	}
 
@@ -128,4 +170,8 @@ func (pool *SqlPool) createConnection() (*SqlConn, error) {
 	}
 
 	return &c, nil
+}
+
+func getNextId() uint32 {
+	return atomic.AddUint32(&idCounter, 1)
 }

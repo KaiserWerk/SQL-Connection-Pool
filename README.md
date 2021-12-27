@@ -29,7 +29,7 @@ pool := sqlpool.New("mysql", "root:password@tcp(127.0.0.1:3306)/dbname", &sqlpoo
 defer pool.Close()
 ```
 
-``pool.Close()`` closes all existing connections to be closed.
+``pool.Close()`` closes all existing connections.
 
 Get a connection (this either returns an unused existing one or creates a new connection if
 the maximum is not reached yet):
